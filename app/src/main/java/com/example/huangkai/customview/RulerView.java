@@ -7,11 +7,12 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 
 public class RulerView extends View {
-
+    public static final String TAG ="RulerView";
     float halfWidth = 0;
 
     float miniNumber;
@@ -52,7 +53,7 @@ public class RulerView extends View {
             miniVaule = a.getFloat(R.styleable.RulerView_miniValue, 0f);
             maxVaule = a.getFloat(R.styleable.RulerView_maxValue, 100f);
             currentValue = a.getFloat(R.styleable.RulerView_currentValue, 50f);
-            unit = a.getFloat(R.styleable.RulerView_unit, 50f);
+            unit = a.getFloat(R.styleable.RulerView_unit, 0.1f);
             unitSpace = a.getDimension(R.styleable.RulerView_unitSpace, dp2px(10));
             bgColor = a.getColor(R.styleable.RulerView_bgColor, Color.parseColor("#f5f8f5"));
             a.recycle();
@@ -62,8 +63,10 @@ public class RulerView extends View {
 
     private void init() {
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mPaint.setStrokeWidth(3);
+        mPaint.setStrokeWidth(7);
         gradationColor = Color.BLUE;
+
+        changeValue();
     }
 
     private void changeValue() {
@@ -74,7 +77,9 @@ public class RulerView extends View {
 
         //当前值到最左边的距离
         currentDistance = ((currentNumber - miniNumber) / unitNumber) * unitSpace;
-        maxDistance = (maxNumber - miniNumber) / unitNumber;
+        Log.i(TAG,"currentDistance = "+currentDistance);
+        maxDistance = ((maxNumber - miniNumber) / unitNumber)*unitSpace;
+        Log.i(TAG,"maxDistance = "+maxDistance);
 
     }
 
@@ -85,8 +90,9 @@ public class RulerView extends View {
         if (width >= 0) {
             halfWidth = width >> 1;
         }
-        if (widthRange != -1) {
-            widthRange = (width / unitSpace) * unit;
+        if (widthRange == -1) {
+            widthRange = (width / unitSpace) * unit*10;
+            Log.i(TAG,"widthRange = "+widthRange);
         }
         mWidth = width;
         setMeasuredDimension(width, height);
@@ -101,6 +107,7 @@ public class RulerView extends View {
         switch (mode) {
             //如果是指定大小或者mathParent
             case MeasureSpec.EXACTLY:
+                result = size;
                 break;
             case MeasureSpec.AT_MOST:
                 if (!isWidth) {
@@ -124,18 +131,23 @@ public class RulerView extends View {
     protected void onDraw(Canvas canvas) {
         canvas.drawColor(bgColor);
 
-
+        drawPointer(canvas);
     }
 
     private void drawPointer(Canvas canvas) {
         //画顶上的线
         mPaint.setColor(gradationColor);
-        canvas.drawLine(0, 2, mWidth, 2, mPaint);
+        canvas.drawLine(0, 1, mWidth, 1, mPaint);
         //计算最左边的值
        int startNumber =  (int)((currentDistance - halfWidth)/unitSpace+miniNumber);
+
+        Log.i(TAG,"startNumber = "+startNumber);
         //计算最右边的值
        int endNumber  = (int)(startNumber + widthRange);
 
+        Log.i(TAG,"endNumber = "+endNumber);
 
+       float startPosition = halfWidth - (widthRange/2)*unitSpace;
+        Log.i(TAG,"startPosition = "+startPosition);
     }
 }
