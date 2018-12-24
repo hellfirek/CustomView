@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="RulerView">
+        <attr name="miniValue" format="float"/>
+        <attr name="maxValue" format="float"/>
+        <attr name="currentValue" format="float"/>
+        <attr name="unit" format="float"/>
+        <attr name="unitSpace" format="dimension"/>
+        <attr name="bgColor" format="color"/>
+    </declare-styleable>
+</resources>
