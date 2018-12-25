@@ -6,13 +6,15 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.support.annotation.Nullable;
+import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
 
 public class RulerView extends View {
-    public static final String TAG ="RulerView";
+    public static final String TAG = "RulerView";
     float halfWidth = 0;
 
     float miniNumber;
@@ -37,7 +39,12 @@ public class RulerView extends View {
      * 普通画笔
      */
     private Paint mPaint;
+    private TextPaint tPaint;
 
+    private static final int SHORTLINE = 50;
+    private static final int LONGLINE = 100;
+
+    private float lastX;
     public RulerView(Context context) {
         this(context, null);
     }
@@ -66,6 +73,10 @@ public class RulerView extends View {
         mPaint.setStrokeWidth(7);
         gradationColor = Color.BLUE;
 
+        tPaint = new TextPaint();
+        tPaint.setTextSize(dp2px(14));
+        tPaint.setColor(Color.BLACK);
+
         changeValue();
     }
 
@@ -77,9 +88,9 @@ public class RulerView extends View {
 
         //当前值到最左边的距离
         currentDistance = ((currentNumber - miniNumber) / unitNumber) * unitSpace;
-        Log.i(TAG,"currentDistance = "+currentDistance);
-        maxDistance = ((maxNumber - miniNumber) / unitNumber)*unitSpace;
-        Log.i(TAG,"maxDistance = "+maxDistance);
+        Log.i(TAG, "currentDistance = " + currentDistance);
+        maxDistance = ((maxNumber - miniNumber) / unitNumber) * unitSpace;
+        Log.i(TAG, "maxDistance = " + maxDistance);
 
     }
 
@@ -91,8 +102,8 @@ public class RulerView extends View {
             halfWidth = width >> 1;
         }
         if (widthRange == -1) {
-            widthRange = (width / unitSpace) * unit*10;
-            Log.i(TAG,"widthRange = "+widthRange);
+            widthRange = (width / unitSpace) * unit * 10;
+            Log.i(TAG, "widthRange = " + widthRange);
         }
         mWidth = width;
         setMeasuredDimension(width, height);
@@ -139,15 +150,56 @@ public class RulerView extends View {
         mPaint.setColor(gradationColor);
         canvas.drawLine(0, 1, mWidth, 1, mPaint);
         //计算最左边的值
-       int startNumber =  (int)((currentDistance - halfWidth)/unitSpace+miniNumber);
+        int startNumber = (int) ((currentDistance - halfWidth) / unitSpace + miniNumber);
 
-        Log.i(TAG,"startNumber = "+startNumber);
+        Log.i(TAG, "startNumber = " + startNumber);
         //计算最右边的值
-       int endNumber  = (int)(startNumber + widthRange);
+        int endNumber = (int) (startNumber + widthRange);
 
-        Log.i(TAG,"endNumber = "+endNumber);
+        Log.i(TAG, "endNumber = " + endNumber);
 
-       float startPosition = halfWidth - (widthRange/2)*unitSpace;
-        Log.i(TAG,"startPosition = "+startPosition);
+        float startPosition = halfWidth - (currentDistance-(startNumber-miniNumber)/unitNumber*unitSpace);
+
+
+        while (startNumber <= endNumber) {
+
+            if (startNumber % 10 == 0) {
+                canvas.drawLine(startPosition, 1, startPosition, 1 + LONGLINE, mPaint);
+                String content = String.valueOf(startNumber);
+                float textWidth = tPaint.measureText(content);
+                canvas.drawText(content, (int) (startPosition - textWidth * 0.5f), 1 + LONGLINE + dp2px(14), tPaint);
+            } else {
+                canvas.drawLine(startPosition, 1, startPosition, 1 + SHORTLINE, mPaint);
+            }
+
+            startNumber += 1;
+            startPosition += unitSpace;
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        float x = event.getX();
+        switch (event.getAction()) {
+
+            case MotionEvent.ACTION_DOWN:
+                 lastX = event.getX();
+
+                break;
+            case MotionEvent.ACTION_MOVE:
+                 int distance = (int)(x-lastX);
+                Log.i("hked","lastX"+lastX+"event.getX()"+event.getX()+"distance = "+distance);
+                 currentDistance= currentDistance-distance;
+
+                 invalidate();
+                 lastX =x;
+                break;
+            case MotionEvent.ACTION_UP:
+                break;
+
+            default:
+                break;
+        }
+        return true;
     }
 }
