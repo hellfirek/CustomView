@@ -13,6 +13,7 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
+
 public class RulerView extends View {
     public static final String TAG = "RulerView";
     float halfWidth = 0;
@@ -39,10 +40,13 @@ public class RulerView extends View {
      * 普通画笔
      */
     private Paint mPaint;
+    private Paint centerPaint;
     private TextPaint tPaint;
 
     private static final int SHORTLINE = 50;
     private static final int LONGLINE = 100;
+
+    private static final int CENTER_LINE = 150;
 
     private float lastX;
     public RulerView(Context context) {
@@ -73,6 +77,11 @@ public class RulerView extends View {
         mPaint.setStrokeWidth(7);
         gradationColor = Color.BLUE;
 
+        centerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        centerPaint.setStrokeWidth(10);
+        centerPaint.setColor(Color.GREEN);
+
+        gradationColor = Color.BLUE;
         tPaint = new TextPaint();
         tPaint.setTextSize(dp2px(14));
         tPaint.setColor(Color.BLACK);
@@ -140,9 +149,11 @@ public class RulerView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        canvas.drawColor(bgColor);
 
+        canvas.drawColor(bgColor);
         drawPointer(canvas);
+        drawCenterPointer(canvas);
+
     }
 
     private void drawPointer(Canvas canvas) {
@@ -177,6 +188,10 @@ public class RulerView extends View {
         }
     }
 
+    private void drawCenterPointer(Canvas canvas){
+         canvas.drawLine(halfWidth,4,halfWidth,CENTER_LINE,centerPaint);
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         float x = event.getX();
@@ -188,13 +203,18 @@ public class RulerView extends View {
                 break;
             case MotionEvent.ACTION_MOVE:
                  int distance = (int)(x-lastX);
-                Log.i("hked","lastX"+lastX+"event.getX()"+event.getX()+"distance = "+distance);
+
                  currentDistance= currentDistance-distance;
 
                  invalidate();
                  lastX =x;
                 break;
             case MotionEvent.ACTION_UP:
+                Log.i("hked","currentDistance = "+currentDistance);
+                float up = (currentDistance/unitSpace)*unitNumber+miniNumber;
+                int nearNumber =  Math.round(up);
+                currentDistance = (nearNumber-miniNumber)/unitNumber*unitSpace;
+                invalidate();
                 break;
 
             default:
