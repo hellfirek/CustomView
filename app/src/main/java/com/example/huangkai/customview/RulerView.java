@@ -6,12 +6,15 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.support.annotation.Nullable;
+import android.support.v4.view.ViewConfigurationCompat;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
+import android.view.ViewConfiguration;
 
 
 public class RulerView extends View {
@@ -47,8 +50,17 @@ public class RulerView extends View {
     private static final int LONGLINE = 100;
 
     private static final int CENTER_LINE = 150;
+    private int TOUCH_SLOP = 0;
+    private int MINI = 0;
+    private int MAX = 0;
+    private float lastX, lastY, downX;
+    boolean isMoved = false;
 
-    private float lastX;
+    /**
+     * 速度跟踪器
+     */
+    private VelocityTracker mVelocityTracker;
+
     public RulerView(Context context) {
         this(context, null);
     }
@@ -63,7 +75,7 @@ public class RulerView extends View {
             TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.RulerView);
             miniVaule = a.getFloat(R.styleable.RulerView_miniValue, 0f);
             maxVaule = a.getFloat(R.styleable.RulerView_maxValue, 100f);
-            currentValue = a.getFloat(R.styleable.RulerView_currentValue, 50f);
+            currentValue = a.getFloat(R.styleable.RulerView_currentValue, 100f);
             unit = a.getFloat(R.styleable.RulerView_unit, 0.1f);
             unitSpace = a.getDimension(R.styleable.RulerView_unitSpace, dp2px(10));
             bgColor = a.getColor(R.styleable.RulerView_bgColor, Color.parseColor("#f5f8f5"));
@@ -86,6 +98,10 @@ public class RulerView extends View {
         tPaint.setTextSize(dp2px(14));
         tPaint.setColor(Color.BLACK);
 
+        ViewConfiguration configuration = ViewConfiguration.get(getContext());
+        TOUCH_SLOP = configuration.getScaledTouchSlop();
+        MAX =  configuration.getScaledMaximumFlingVelocity();
+        MINI =  configuration.getScaledMaximumFlingVelocity();
         changeValue();
     }
 
@@ -139,6 +155,8 @@ public class RulerView extends View {
             case MeasureSpec.UNSPECIFIED:
                 result = dp2px(80);
                 break;
+            default:
+                break;
         }
         return result;
     }
@@ -159,27 +177,35 @@ public class RulerView extends View {
     private void drawPointer(Canvas canvas) {
         //画顶上的线
         mPaint.setColor(gradationColor);
+        mPaint.setStrokeWidth(7);
         canvas.drawLine(0, 1, mWidth, 1, mPaint);
         //计算最左边的值
         int startNumber = (int) ((currentDistance - halfWidth) / unitSpace + miniNumber);
 
+        if (startNumber < miniNumber) {
+            startNumber = (int) miniNumber;
+        }
         Log.i(TAG, "startNumber = " + startNumber);
         //计算最右边的值
         int endNumber = (int) (startNumber + widthRange);
-
+        if (endNumber > maxNumber) {
+            endNumber = (int)maxNumber;
+        }
         Log.i(TAG, "endNumber = " + endNumber);
 
-        float startPosition = halfWidth - (currentDistance-(startNumber-miniNumber)/unitNumber*unitSpace);
-
+        float startPosition = halfWidth - (currentDistance - (startNumber - miniNumber) / unitNumber * unitSpace);
+        Log.i(TAG, "startPosition = " + startPosition);
 
         while (startNumber <= endNumber) {
 
             if (startNumber % 10 == 0) {
+                mPaint.setStrokeWidth(7);
                 canvas.drawLine(startPosition, 1, startPosition, 1 + LONGLINE, mPaint);
-                String content = String.valueOf(startNumber);
+                String content = String.valueOf(startNumber/10);
                 float textWidth = tPaint.measureText(content);
                 canvas.drawText(content, (int) (startPosition - textWidth * 0.5f), 1 + LONGLINE + dp2px(14), tPaint);
             } else {
+                mPaint.setStrokeWidth(3);
                 canvas.drawLine(startPosition, 1, startPosition, 1 + SHORTLINE, mPaint);
             }
 
@@ -188,38 +214,57 @@ public class RulerView extends View {
         }
     }
 
-    private void drawCenterPointer(Canvas canvas){
-         canvas.drawLine(halfWidth,4,halfWidth,CENTER_LINE,centerPaint);
+    private void drawCenterPointer(Canvas canvas) {
+        canvas.drawLine(halfWidth, 4, halfWidth, CENTER_LINE, centerPaint);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         float x = event.getX();
+        float y = event.getY();
+        if(mVelocityTracker == null){
+            mVelocityTracker = VelocityTracker.obtain();
+        }
+        mVelocityTracker.addMovement(event);
         switch (event.getAction()) {
 
             case MotionEvent.ACTION_DOWN:
-                 lastX = event.getX();
+                downX = event.getX();
 
                 break;
             case MotionEvent.ACTION_MOVE:
-                 int distance = (int)(x-lastX);
+                int distanceX = (int) (x - lastX);
+                int distanceY = (int) (y - lastY);
+                if (Math.abs(distanceY) > Math.abs(distanceX) || Math.abs(x - downX) < TOUCH_SLOP) {
+                    Log.i("hked", "" + (x - downX) + " TOUCH_SLOP = " + TOUCH_SLOP);
+                    break;
+                }
+                currentDistance = currentDistance - distanceX;
+                if(currentDistance<=miniVaule){
+                    currentDistance = miniVaule;
+                }
+                if(currentDistance>=maxDistance){
+                    currentDistance = maxDistance;
+                }
+                invalidate();
 
-                 currentDistance= currentDistance-distance;
-
-                 invalidate();
-                 lastX =x;
                 break;
             case MotionEvent.ACTION_UP:
-                Log.i("hked","currentDistance = "+currentDistance);
-                float up = (currentDistance/unitSpace)*unitNumber+miniNumber;
-                int nearNumber =  Math.round(up);
-                currentDistance = (nearNumber-miniNumber)/unitNumber*unitSpace;
+                Log.i("hked", "currentDistance = " + currentDistance);
+                float up = (currentDistance / unitSpace) * unitNumber + miniNumber;
+                int nearNumber = Math.round(up);
+                currentDistance = (nearNumber - miniNumber) / unitNumber * unitSpace;
                 invalidate();
+                mVelocityTracker.computeCurrentVelocity(1000,MAX);
+                float rate =  mVelocityTracker.getXVelocity();
+                Log.i("hked","rate = "+rate);
                 break;
 
             default:
                 break;
         }
+        lastX = x;
+        lastY = y;
         return true;
     }
 }
